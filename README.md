@@ -31,3 +31,10 @@ Virtual Environment를 다음과 같이 생성합니다.
 # pip install uvicorn 
 # uvicorn main:app --reload
 ```
+
+## Wheel Packaging
+
+```
+# pip install wheel
+# python setup.py bdist_wheel
+```

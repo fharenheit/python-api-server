@@ -1,4 +1,6 @@
-
-# Ignore dynaconf secret files
 .secrets.*
 venv
+*.log
+build
+dist
+*.egg-info
