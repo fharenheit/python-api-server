@@ -1,0 +1,31 @@
+development:
+  mode : development
+  gitlab:
+    server: 10.10.10.10
+    username: admin
+    password: admin
+    command: /bin/bash /data/checkoutGWMS.sh
+  airflow:
+    url: http://localhost:8000/api/v1
+    username: admin
+    password: admin
+  storage:
+    aiplatform-path:
+    gwms-image-path:
+    gwms-cad-path:
+
+production:
+  mode : production
+  gitlab:
+    server: 10.10.10.10
+    username: admin
+    password: admin
+    command: /bin/bash /data/checkoutGWMS.sh
+  airflow:
+    url: http://localhost:8000/api/v1
+    username: admin
+    password: admin
+  storage:
+    aiplatform-path:
+    gwms-image-path:
+    gwms-cad-path:
