@@ -1,4 +1,4 @@
-# Test your FastAPI endpoints
+# HTTP Test for IntelliJ OR Pycharm
 
 GET http://127.0.0.1:8000/
 Accept: application/json

@@ -11,16 +11,9 @@ setup(
         'paramiko==2.10.3',
         'pydantic==1.9.0',
         'requests==2.27.1',
-        'SQLAlchemy==1.4.32'
+        'SQLAlchemy==1.4.32',
+        'python-gitlab==3.2.0',
+        'GitPython==3.1.27'
     ],
     entry_points={
     })
-
-
-
-
-
-
-
-
-
