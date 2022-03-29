@@ -1,37 +1,36 @@
 import time
-import airflow_client.client
+import random
+import requests
+import json
+from datetime import datetime, timedelta
 
-from airflow_client.client.api import dag_run_api
-from airflow_client.client.model.error import Error
-from pprint import pprint
-from airflow_client.client.model.dag_state import DagState
-from datetime import datetime
-
-configuration = airflow_client.client.Configuration(
-    host = "http://localhost:8080/api/v1",
-    username = 'admin',
-    password = 'admin'
-)
-
-now = datetime.now()
+_now = datetime.now()
+now =  _now - timedelta(hours=9)
 print(now)
 
 date_time = now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-4] + 'Z'
+job_id = "job_{}".format(_now.strftime('%Y%m%d%H%M%S'))
 print(date_time)
 
-with airflow_client.client.ApiClient(configuration) as api_client:
-    api_instance = dag_run_api.DAGRunApi(api_client)
-    dag_id = 'hello_world'
-    dag_run = dag_run_api.DAGRun(
-        dag_run_id = "hello_task_id",
-        logical_date = now,
-        execution_date = now,
-        state = DagState("queued"),
-        conf = {},
-    )
+# Airflow의 airflow.cfg 파일에서 다음을 추가하도록 함
+# auth_backend = airflow.api.auth.backend.basic_auth
 
-    try:
-        api_response = api_instance.post_dag_run(dag_id, dag_run)
-        pprint(api_response)
-    except airflow_client.client.ApiException as e:
-        print("Exception when calling DAGRunApi->post_dag_run: %s\n" % e)
+airflow_server = "http://localhost:8080"
+airflow_username = "admin"
+airflow_password = "admin"
+ 
+dag_name = "hello_world"
+headers = { 'accept': 'application/json', 'Content-Type': 'application/json'}
+auth = (airflow_username, airflow_password)
+body = {
+  "conf": {
+      "image_path": "/project_data/claim/part_images",
+      "output_path": ""
+  },
+  "dag_run_id": job_id,
+  "logical_date": date_time
+}
+
+url = "{}/api/v1/dags/{}/dagRuns".format(airflow_server, dag_name)
+response = requests.post(url, headers=headers, auth=auth, data=json.dumps(body)) 
+print(response.content.decode("UTF-8"))
