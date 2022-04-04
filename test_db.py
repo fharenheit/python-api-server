@@ -11,4 +11,4 @@ from tinydb.table import Document
 db = TinyDB('./db.json')
 db.upsert(Document({'name': 'John', 'age': 22}, doc_id=12))
 db.upsert(Document({'name': 'John', 'age': 23}, doc_id=12))
-db.upsert(Document({'name': 'John', 'age': 23, 'date':'20220101111111'}, doc_id=12))
+db.upsert(Document({'name': 'John', 'age': 23, 'date': '20220101111111'}, doc_id=12))

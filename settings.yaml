@@ -1,5 +1,6 @@
 development:
   mode : development
+  database-path : ./db.json
   gitlab:
     server: 10.10.10.10
     username: admin
@@ -16,6 +17,7 @@ development:
 
 production:
   mode : production
+  database-path : ./db.json
   gitlab:
     server: 10.10.10.10
     username: admin

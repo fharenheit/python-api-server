@@ -2,6 +2,10 @@ import logging
 import os
 import paramiko
 import airflow_client.client
+import shutil
+import ntpath
+import glob
+
 from pprint import pprint
 from typing import List
 from dynaconf import settings
@@ -12,6 +16,9 @@ from sqlalchemy.orm import declarative_base
 from airflow_client.client.api import dag_run_api
 from airflow_client.client.model.error import Error
 
+from tinydb import TinyDB, Query
+from tinydb.operations import delete, increment, decrement, add, subtract, set
+from tinydb.table import Document
 
 # https://realpython.com/python-logging/
 logging.basicConfig(filename='app.log', filemode='w', format='[%(asctime)s] [%(levelname)s] - %(message)s',
@@ -30,7 +37,7 @@ print("Application Mode : {}".format(settings.get("mode")))
 # https://fastapi.tiangolo.com/tutorial/body/
 app = FastAPI()
 
-# # https://docs.sqlalchemy.org/en/14/orm/tutorial.html#connecting
+# https://docs.sqlalchemy.org/en/14/orm/tutorial.html#connecting
 Base = declarative_base()
 
 # Airflow Configuration
@@ -42,13 +49,15 @@ configuration = airflow_client.client.Configuration(
     password=settings.get("airflow.password")
 )
 
+db = TinyDB(settings.get("database-path"))
+
 
 class FilePath(BaseModel):
     path: str
 
 
 class Request(BaseModel):
-    name: str
+    request_id: str
     files: List[FilePath]
 
 
@@ -104,6 +113,7 @@ def pullGitlab():
     ssh.connect(server, username=username, password=password)
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd_to_execute)
 
+
 # https://github.com/apache/airflow-client-python/blob/master/airflow_client/docs/DAGRunApi.md
 def runDag(dagName: str):
     with airflow_client.client.ApiClient(configuration) as api_client:
@@ -117,3 +127,30 @@ def runDag(dagName: str):
             api_instance.delete_dag_run(dag_id, dag_run_id)
         except client.ApiException as e:
             print("Exception when calling DAGRunApi->delete_dag_run: %s\n" % e)
+
+
+def delete_files(path: str):
+    files = glob.glob("{}/*".format(path))
+    for f in files:
+        try:
+            os.remove(f)
+        except OSError as e:
+            logging.warning("파일을 삭제할 수 없습니다. 파일명 : %s / 에러 : %s" % (f, e.strerror))
+
+
+def copy_file(source_base_path: str, source_filename: str, target_base_path: str):
+    head, tail = ntpath.split(source_filename)
+    source_path = "{}/{}".format(source_base_path, source_filename)
+    target_path = "{}/{}".format(target_base_path, tail)
+
+    logging.info("소스파일 {}을 {} 파일로 복사합니다.".format(source_path, target_path))
+
+    shutil.copyfile(source_path, target_path)
+
+    logging.info("파일을 복사하였습니다.")
+
+
+def copy_files(source_base_path: str, source_filenames: List[str], target_base_path: str):
+    logging.info("소스 디렉토리 {}의 파일을 목적 디렉토리의 {}으로 복사를 시작합니다.".format(source_base_path, target_base_path))
+    for filename in source_filenames:
+        copy_file(source_base_path, filename, target_base_path)
