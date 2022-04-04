@@ -130,6 +130,7 @@ def runDag(dagName: str):
 
 
 def delete_files(path: str):
+    logging.info("지정한 경로 {}의 모든 파일을 삭제합니다.".format(path))
     files = glob.glob("{}/*".format(path))
     for f in files:
         try:
