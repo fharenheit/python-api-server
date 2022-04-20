@@ -6,6 +6,7 @@ import shutil
 import ntpath
 import glob
 import uvicorn
+import requests
 
 from pprint import pprint
 from typing import List, Optional
@@ -105,6 +106,36 @@ async def root():
     logging.info("this is debug logging")
     return {"message": "Hello World"}
 
+def runDag(job_id: str, json_path: str, json_file_path: str):
+    _now = datetime.now()
+    now = _now - timedelta(hours=9)
+    date_time = now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-4] + 'Z'
+
+    airflow_server = settings.get("airflow.url")
+    airflow_username = settings.get("airflow.username")
+    airflow_password = settings.get("airflow.password")
+
+    dag_name = "GWMS-PARTS"
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    auth = (airflow_username, airflow_password)
+    body = {
+        "conf": {
+            "job_id": job_id,
+            "base_path": json_path,
+            "json_file_path": json_file_path
+        },
+        "dag_run_id": job_id,
+        "logical_date": date_time
+    }
+
+    url = "{}/api/v1/dags/{}/dagRuns".format(airflow_server, dag_name)
+    response = requests.post(url, headers=headers, auth=auth, data=json.dumps(body))
+    response_body = response.content.decode("UTF-8")
+
+    logging.info(f"Dag Run : {response_body}")
+
+    return response
+
 
 @app.post("/api/run/parts")
 async def dagRunParts(body: Request):
@@ -119,7 +150,8 @@ async def dagRunParts(body: Request):
     writeStringToFile(','.join(body.images), json_file_path)
 
     logging.info(f"Airflow의 parts를 실행합니다.")
-    logging.info(body)
+
+    runDag(job_id, json_path, json_file_path)
 
     response = Response()
     response.job_id = job_id
@@ -190,6 +222,7 @@ def copy_files(source_base_path: str, source_filenames: List[str], target_base_p
     logging.info("소스 디렉토리 {}의 파일을 목적 디렉토리의 {}으로 복사를 시작합니다.".format(source_base_path, target_base_path))
     for filename in source_filenames:
         copy_file(source_base_path, filename, target_base_path)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(settings.get("port")))
