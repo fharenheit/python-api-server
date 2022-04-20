@@ -1,6 +1,7 @@
 development:
   mode : development
   database-path : ./db.json
+  working-path : ./working
   port : 9000
   gitlab:
     server: 10.10.10.10

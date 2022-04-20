@@ -8,7 +8,7 @@ import glob
 import uvicorn
 
 from pprint import pprint
-from typing import List
+from typing import List, Optional
 from dynaconf import settings
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -16,6 +16,7 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 from airflow_client.client.api import dag_run_api
 from airflow_client.client.model.error import Error
+from datetime import datetime, timedelta
 
 from tinydb import TinyDB, Query
 from tinydb.operations import delete, increment, decrement, add, subtract, set
@@ -52,19 +53,32 @@ configuration = airflow_client.client.Configuration(
 
 db = TinyDB(settings.get("database-path"))
 
+def createIfNotExists(path: str):
+    isExist = os.path.exists(path)
+    if not isExist:
+        os.makedirs(path)
+        logging.info(f"The working directory '{path}' is created")
+
+def writeStringToFile(body: str, path: str):
+    text_file = open(path, "w")
+    text_file.write(body)
+    text_file.close()
+    logging.debug(f"Saved {path}.\n{body}")
+
+working_directory = settings.get("working-path")
+createIfNotExists(working_directory)
 
 class FilePath(BaseModel):
     path: str
 
-
 class Request(BaseModel):
-    request_id: str
-    files: List[FilePath]
+    images: List[str]
 
 
 class Response(BaseModel):
-    success: str
-    message: str
+    job_id: Optional[str] = None
+    success: Optional[str] = None
+    message: Optional[str] = None
 
 
 class DagInfo(BaseModel):
@@ -90,6 +104,27 @@ class Log(Base):
 async def root():
     logging.info("this is debug logging")
     return {"message": "Hello World"}
+
+
+@app.post("/api/run/parts")
+async def dagRunParts(body: Request):
+    logging.info(f"{body}")
+
+    yyyymmdd = datetime.now().strftime("%Y%m%d")
+    job_id = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    json_path = "{}/{}/{}".format(working_directory, yyyymmdd, job_id)
+    json_file_path = "{}/{}/{}/request.json".format(working_directory, yyyymmdd, job_id)
+    createIfNotExists(json_path)
+    writeStringToFile(','.join(body.images), json_file_path)
+
+    logging.info(f"Airflow의 parts를 실행합니다.")
+    logging.info(body)
+
+    response = Response()
+    response.job_id = job_id
+    response.success = "true"
+    return response
 
 
 @app.post("/api/run/{dagName}")
@@ -138,7 +173,6 @@ def delete_files(path: str):
             os.remove(f)
         except OSError as e:
             logging.warning("파일을 삭제할 수 없습니다. 파일명 : %s / 에러 : %s" % (f, e.strerror))
-
 
 def copy_file(source_base_path: str, source_filename: str, target_base_path: str):
     head, tail = ntpath.split(source_filename)

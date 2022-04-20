@@ -1,11 +1,9 @@
 # HTTP Test for IntelliJ OR Pycharm
 
-GET http://127.0.0.1:8000/
+POST http://127.0.0.1:9000/api/run/parts
 Accept: application/json
+Content-Type: application/json
 
-###
-
-GET http://127.0.0.1:8000/hello/User
-Accept: application/json
-
-###
+{
+  "images": ["1.png","2.png","3.png","4.png"]
+}
