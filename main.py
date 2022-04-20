@@ -5,6 +5,7 @@ import airflow_client.client
 import shutil
 import ntpath
 import glob
+import uvicorn
 
 from pprint import pprint
 from typing import List
@@ -155,3 +156,6 @@ def copy_files(source_base_path: str, source_filenames: List[str], target_base_p
     logging.info("소스 디렉토리 {}의 파일을 목적 디렉토리의 {}으로 복사를 시작합니다.".format(source_base_path, target_base_path))
     for filename in source_filenames:
         copy_file(source_base_path, filename, target_base_path)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=int(settings.get("port")))
