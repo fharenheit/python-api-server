@@ -106,6 +106,7 @@ async def root():
     logging.info("this is debug logging")
     return {"message": "Hello World"}
 
+
 def runDag(job_id: str, json_path: str, json_file_path: str):
     _now = datetime.now()
     now = _now - timedelta(hours=9)
