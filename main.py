@@ -23,10 +23,6 @@ from tinydb import TinyDB, Query
 from tinydb.operations import delete, increment, decrement, add, subtract, set
 from tinydb.table import Document
 
-# https://realpython.com/python-logging/
-logging.basicConfig(filename='app.log', filemode='w', format='[%(asctime)s] [%(levelname)s] - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-
 # Configuration Mode
 mode = "development"
 try:
@@ -35,7 +31,27 @@ try:
 except KeyError:
     mode = "development"
 
-print("Application Mode : {}".format(settings.get("mode")))
+def getLogger():
+    logger = logging.getLogger(__name__)
+
+    formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] - %(message)s')
+
+    streamHandler = logging.StreamHandler()
+    fileHandler = logging.handlers.RotatingFileHandler('test.log', maxBytes=1024 * 1024 * 10, backupCount=10)
+
+    streamHandler.setFormatter(formatter)
+    fileHandler.setFormatter(formatter)
+
+    logger.addHandler(streamHandler)
+    logger.addHandler(fileHandler)
+
+    logger.setLevel(logging.DEBUG)
+
+    return logger
+
+logger = getLogger()
+
+logger.info("Application Mode : {}".format(settings.get("mode")))
 
 # https://fastapi.tiangolo.com/tutorial/body/
 app = FastAPI()
@@ -90,13 +106,13 @@ class Log(Base):
 
 @app.get("/")
 async def root():
-    logging.info("this is debug logging")
+    logger.info("this is debug logging")
     return {"message": "Hello World"}
 
 
 @app.post("/api/run/{dagName}")
 async def dagRun(request: Request):
-    print(request)
+    logger(request)
 
     dag_name = "hello_world"
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
@@ -133,46 +149,46 @@ async def dagRun(request: Request):
 
 @app.get("/api/info/{dagName}/{jobId}")
 async def dagInfo(dagName: str, jobId: str):
-    logging.info(f"Dag Name : {dagName}")
-    logging.info(f"Job ID : {jobId}")
+    logger.info(f"Dag Name : {dagName}")
+    logger.info(f"Job ID : {jobId}")
 
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     auth = ("admin", "admin")
 
     url = "{}/api/v1/dags/{}/dagRuns/{}".format("http://localhost:8080", dagName, jobId)
-    logging.info(url)
+    logger.info(url)
     response = requests.get(url, headers=headers, auth=auth).json()
-    logging.info(response)
+    logger.info(response)
 
     return response
 
 
 @app.get("/api/detail/{dagName}/{jobId}")
 async def dagDetail(dagName: str, jobId : str):
-    logging.info(f"Dag Name : {dagName}")
-    logging.info(f"Job ID : {jobId}")
+    logger.info(f"Dag Name : {dagName}")
+    logger.info(f"Job ID : {jobId}")
 
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     auth = ("admin", "admin")
 
     url = "{}/api/v1/dags/{}/dagRuns/{}/taskInstances/bash_test".format("http://localhost:8080", dagName, jobId)
-    logging.info(url)
+    logger.info(url)
     response = requests.get(url, headers=headers, auth=auth).json()
-    logging.info(response)
+    logger.info(response)
 
     return response
 
 
 @app.get("/api/log/{dagName}/{jobId}/{tryNumber}")
 async def dagLog(dagName: str, jobId : str, tryNumber: str):
-    logging.info(f"Dag Name : {dagName}")
-    logging.info(f"Job ID : {jobId}")
+    logger.info(f"Dag Name : {dagName}")
+    logger.info(f"Job ID : {jobId}")
 
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     auth = ("admin", "admin")
 
     url = "{}/api/v1/dags/{}/dagRuns/{}/taskInstances/bash_test/logs/{}".format("http://localhost:8080", dagName, jobId, tryNumber)
-    logging.info(url)
+    logger.info(url)
     response = requests.get(url, headers=headers, auth=auth).json()
     print(response)
 
@@ -206,13 +222,13 @@ def runDag(dagName: str):
 
 
 def delete_files(path: str):
-    logging.info("지정한 경로 {}의 모든 파일을 삭제합니다.".format(path))
+    logger.info("지정한 경로 {}의 모든 파일을 삭제합니다.".format(path))
     files = glob.glob("{}/*".format(path))
     for f in files:
         try:
             os.remove(f)
         except OSError as e:
-            logging.warning("파일을 삭제할 수 없습니다. 파일명 : %s / 에러 : %s" % (f, e.strerror))
+            logger.warning("파일을 삭제할 수 없습니다. 파일명 : %s / 에러 : %s" % (f, e.strerror))
 
 
 def copy_file(source_base_path: str, source_filename: str, target_base_path: str):
@@ -220,15 +236,15 @@ def copy_file(source_base_path: str, source_filename: str, target_base_path: str
     source_path = "{}/{}".format(source_base_path, source_filename)
     target_path = "{}/{}".format(target_base_path, tail)
 
-    logging.info("소스파일 {}을 {} 파일로 복사합니다.".format(source_path, target_path))
+    logger.info("소스파일 {}을 {} 파일로 복사합니다.".format(source_path, target_path))
 
     shutil.copyfile(source_path, target_path)
 
-    logging.info("파일을 복사하였습니다.")
+    logger.info("파일을 복사하였습니다.")
 
 
 def copy_files(source_base_path: str, source_filenames: List[str], target_base_path: str):
-    logging.info("소스 디렉토리 {}의 파일을 목적 디렉토리의 {}으로 복사를 시작합니다.".format(source_base_path, target_base_path))
+    logger.info("소스 디렉토리 {}의 파일을 목적 디렉토리의 {}으로 복사를 시작합니다.".format(source_base_path, target_base_path))
     for filename in source_filenames:
         copy_file(source_base_path, filename, target_base_path)
 
