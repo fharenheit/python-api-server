@@ -5,9 +5,11 @@ import airflow_client.client
 import shutil
 import ntpath
 import glob
+import requests
+import json
 
 from pprint import pprint
-from typing import List
+from typing import List, Optional
 from dynaconf import settings
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -15,6 +17,7 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 from airflow_client.client.api import dag_run_api
 from airflow_client.client.model.error import Error
+from datetime import datetime, timedelta
 
 from tinydb import TinyDB, Query
 from tinydb.operations import delete, increment, decrement, add, subtract, set
@@ -53,11 +56,11 @@ db = TinyDB(settings.get("database-path"))
 
 
 class FilePath(BaseModel):
-    path: str
+    path: Optional[str]
 
 
 class Request(BaseModel):
-    request_id: str
+    job_id: Optional[str]
     files: List[FilePath]
 
 
@@ -93,14 +96,87 @@ async def root():
 
 @app.post("/api/run/{dagName}")
 async def dagRun(request: Request):
-    logging.info(f"Airflow의 {request.name}를 실행합니다.")
-    return {"message": f"Hello {request.name}"}
+    print(request)
+
+    dag_name = "hello_world"
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    auth = ("admin", "admin")
+
+    _now = datetime.now()
+    now = _now - timedelta(hours=9)
+    date_time = now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-4] + 'Z'
+    job_id = "job_{}".format(_now.strftime('%Y%m%d%H%M%S'))
+    final_job_id = ""
+
+    if request.job_id == None:
+        final_job_id = job_id
+    else:
+        final_job_id = request.job_id
+
+    image_paths = []
+    for file in request.files:
+        image_paths.append(file.path)
+
+    body = {
+        "conf": {
+            "image_paths": ",".join(image_paths)
+        },
+        "dag_run_id": final_job_id,
+        "logical_date": date_time
+    }
+
+    print(body)
+
+    url = "{}/api/v1/dags/{}/dagRuns".format("http://localhost:8080", dag_name)
+    response = requests.post(url, headers=headers, auth=auth, data=json.dumps(body)).json()
+    return response
+
+@app.get("/api/info/{dagName}/{jobId}")
+async def dagInfo(dagName: str, jobId: str):
+    logging.info(f"Dag Name : {dagName}")
+    logging.info(f"Job ID : {jobId}")
+
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    auth = ("admin", "admin")
+
+    url = "{}/api/v1/dags/{}/dagRuns/{}".format("http://localhost:8080", dagName, jobId)
+    logging.info(url)
+    response = requests.get(url, headers=headers, auth=auth).json()
+    logging.info(response)
+
+    return response
 
 
-@app.get("/api/info/{dagName}")
-async def infoDag(dagName: str):
-    logging.info(f"Airflow의 {dagName}의 정보를 확인합니다.")
-    return {"message": f"Hello {dagName}"}
+@app.get("/api/detail/{dagName}/{jobId}")
+async def dagDetail(dagName: str, jobId : str):
+    logging.info(f"Dag Name : {dagName}")
+    logging.info(f"Job ID : {jobId}")
+
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    auth = ("admin", "admin")
+
+    url = "{}/api/v1/dags/{}/dagRuns/{}/taskInstances/bash_test".format("http://localhost:8080", dagName, jobId)
+    logging.info(url)
+    response = requests.get(url, headers=headers, auth=auth).json()
+    logging.info(response)
+
+    return response
+
+
+@app.get("/api/log/{dagName}/{jobId}/{tryNumber}")
+async def dagLog(dagName: str, jobId : str, tryNumber: str):
+    logging.info(f"Dag Name : {dagName}")
+    logging.info(f"Job ID : {jobId}")
+
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    auth = ("admin", "admin")
+
+    url = "{}/api/v1/dags/{}/dagRuns/{}/taskInstances/bash_test/logs/{}".format("http://localhost:8080", dagName, jobId, tryNumber)
+    logging.info(url)
+    response = requests.get(url, headers=headers, auth=auth).json()
+    print(response)
+
+    return response
 
 
 def pullGitlab():
@@ -155,3 +231,4 @@ def copy_files(source_base_path: str, source_filenames: List[str], target_base_p
     logging.info("소스 디렉토리 {}의 파일을 목적 디렉토리의 {}으로 복사를 시작합니다.".format(source_base_path, target_base_path))
     for filename in source_filenames:
         copy_file(source_base_path, filename, target_base_path)
+
